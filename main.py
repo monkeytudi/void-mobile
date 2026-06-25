@@ -81,11 +81,13 @@ async def synthesize(text: str, preview_mode: bool = False) -> bytes:
                               "voice_settings": {"stability": 0.45, "similarity_boost": 0.80,
                                                  "style": 0.0, "use_speaker_boost": True}},
                     )
+                    print(f"EL voice {vid}: status={r.status_code} body={r.text[:200]}")
                     if r.status_code == 200:
                         return r.content
                     if r.status_code != 402:
                         break
-            except Exception:
+            except Exception as e:
+                print(f"EL exception: {e}")
                 break
 
     return b""  # Browser TTS fallback
