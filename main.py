@@ -23,13 +23,15 @@ ANTHROPIC_KEY   = os.getenv("ANTHROPIC_API_KEY",   config.get("anthropic_api_key
 CARTESIA_KEY    = os.getenv("CARTESIA_API_KEY",     config.get("cartesia_api_key", ""))
 CARTESIA_VOICE  = os.getenv("CARTESIA_VOICE_ID",   config.get("cartesia_voice_id", ""))
 EL_KEY          = os.getenv("ELEVENLABS_API_KEY",   config.get("elevenlabs_api_key", ""))
+EL_VOICE_ID     = os.getenv("ELEVENLABS_VOICE_ID",  config.get("elevenlabs_voice_id", ""))
 
 NOTES_FILE = Path(__file__).parent / "notes.txt"
 sessions: dict[str, list] = {}
 stopwatches: dict[str, float] = {}   # session_id → start timestamp (0 = stopped)
 
 BLOCKED = {"110", "112", "911", "118", "999", "0110", "0112", "0911"}
-EL_VOICES = ["onwK4e9ZLuTAKqWW03F9", "pNInz6obpgDQGcFmaJgB", "N2lVS1w4EtoT3dr4eOWO"]
+_EL_FALLBACKS = ["onwK4e9ZLuTAKqWW03F9", "pNInz6obpgDQGcFmaJgB", "N2lVS1w4EtoT3dr4eOWO"]
+EL_VOICES = ([EL_VOICE_ID] if EL_VOICE_ID else []) + _EL_FALLBACKS
 
 
 # ── STT ──────────────────────────────────────────────────────────────────────
