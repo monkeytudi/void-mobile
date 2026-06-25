@@ -46,9 +46,7 @@ async def transcribe(audio: bytes, name: str = "audio.webm") -> str:
             files={"file": (f"audio{ext}", audio, mime)},
             data={"model": "whisper-large-v3", "language": "de"},
         )
-        result = r.json().get("text", "") if r.status_code == 200 else ""
-        print(f"STT: '{result}'")
-        return result
+        return r.json().get("text", "") if r.status_code == 200 else ""
 
 
 # ── TTS ──────────────────────────────────────────────────────────────────────
@@ -83,13 +81,11 @@ async def synthesize(text: str, preview_mode: bool = False) -> bytes:
                               "voice_settings": {"stability": 0.45, "similarity_boost": 0.80,
                                                  "style": 0.0, "use_speaker_boost": True}},
                     )
-                    print(f"EL voice {vid}: status={r.status_code} body={r.text[:200]}")
                     if r.status_code == 200:
                         return r.content
                     if r.status_code != 402:
                         break
-            except Exception as e:
-                print(f"EL exception: {e}")
+            except Exception:
                 break
 
     return b""  # Browser TTS fallback
