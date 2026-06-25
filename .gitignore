@@ -1,0 +1,6 @@
+config.json
+notes.txt
+__pycache__/
+*.pyc
+*.log
+.env

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Void</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- Header -->
+    <header>
+      <span id="logo">VOID</span>
+      <div id="badges">
+        <span id="badge-conv" class="badge hidden">CONV</span>
+        <span id="badge-preview" class="badge preview hidden">PREVIEW</span>
+      </div>
+    </header>
+
+    <!-- Orb -->
+    <main>
+      <div id="orb-wrap">
+        <div id="orb" class="idle">
+          <div class="ring r1"></div>
+          <div class="ring r2"></div>
+          <div class="ring r3"></div>
+          <svg id="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </div>
+        <p id="orb-hint">Halten zum Sprechen</p>
+      </div>
+
+      <!-- Response -->
+      <div id="response-box">
+        <p id="transcript"></p>
+        <p id="response"></p>
+      </div>
+    </main>
+
+    <!-- Actions -->
+    <nav id="actions">
+      <button class="action-btn" id="btn-conv" onclick="toggleConv()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>Konversation</span>
+      </button>
+
+      <button class="action-btn" id="btn-notes" onclick="showNotes()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        <span>Notizen</span>
+      </button>
+
+      <button class="action-btn" id="btn-preview" onclick="togglePreview()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M20.188 10.934A9.98 9.98 0 0 1 21 12c-2 4.667-5.333 7-9 7s-7-2.333-9-7a9.98 9.98 0 0 1 .812-1.066"/>
+        </svg>
+        <span>Preview</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- Timer overlay -->
+  <div id="timer-overlay" class="overlay hidden">
+    <div class="overlay-box">
+      <p id="timer-label">Timer</p>
+      <p id="timer-display">00:00</p>
+      <button onclick="cancelTimer()">Abbrechen</button>
+    </div>
+  </div>
+
+  <!-- Notes overlay -->
+  <div id="notes-overlay" class="overlay hidden">
+    <div class="overlay-box notes-box">
+      <div class="overlay-head">
+        <span>Notizen</span>
+        <div>
+          <button class="small-btn danger" onclick="clearNotes()">Löschen</button>
+          <button class="small-btn" onclick="closeNotes()">✕</button>
+        </div>
+      </div>
+      <div id="notes-list"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
