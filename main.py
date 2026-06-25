@@ -46,7 +46,9 @@ async def transcribe(audio: bytes, name: str = "audio.webm") -> str:
             files={"file": (f"audio{ext}", audio, mime)},
             data={"model": "whisper-large-v3", "language": "de"},
         )
-        return r.json().get("text", "") if r.status_code == 200 else ""
+        result = r.json().get("text", "") if r.status_code == 200 else ""
+        print(f"STT: '{result}'")
+        return result
 
 
 # ── TTS ──────────────────────────────────────────────────────────────────────
@@ -95,11 +97,13 @@ async def synthesize(text: str, preview_mode: bool = False) -> bytes:
 
 # ── Command detection ─────────────────────────────────────────────────────────
 
+WAKE = re.compile(r'\b(void|foid|boid|boyd|woid|voit|voyd|foi|void\.)\b', re.IGNORECASE)
+
 def detect(text: str):
     t = text.lower().strip()
-    if not re.search(r'\bvoid\b', t):
+    if not WAKE.search(t):
         return None, text
-    clean = re.sub(r'^.*?\bvoid\b\s*[,.]?\s*', '', t, count=1).strip()
+    clean = re.sub(r'^.*?' + WAKE.pattern + r'\s*[,.]?\s*', '', t, count=1).strip()
 
     if re.search(r'wie spät|uhrzeit|wie viel uhr|wieviel uhr', clean):
         return "uhrzeit", clean
