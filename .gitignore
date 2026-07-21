@@ -1,5 +1,6 @@
 config.json
 notes.txt
+notes.json
 __pycache__/
 *.pyc
 *.log
