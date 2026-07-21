@@ -15,6 +15,8 @@ import asyncio
 from datetime import datetime
 from pathlib import Path
 
+import fortnite
+
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -203,6 +205,11 @@ TOOLS = [
                        "properties": {"number": {"type": "string", "description": "Telefonnummer, falls genannt"},
                                       "name": {"type": "string", "description": "Name, falls keine Nummer genannt wurde"}},
                        "required": []}},
+    {"name": "check_tournament",
+     "description": ("Aktuellen Stand des getrackten Fortnite-Turniers abfragen (Platzierung, Punkte, "
+                      "Kills, Siege der getrackten Teams). Nutze dies bei Fragen wie 'wie steht's mit dem "
+                      "Turnier', 'Fortnite Turnier', 'was machen meine Teams gerade', 'Leaderboard'."),
+     "input_schema": {"type": "object", "properties": {}, "required": []}},
 ]
 
 ROUTER_SYSTEM = (
@@ -426,6 +433,10 @@ async def process(text: str, sid: str, conv_mode: bool, preview: bool):
                 action = "preview_on" if enabled else "preview_off"
                 extra["preview"] = enabled
                 resp = f"Preview Mode {'aktiviert' if enabled else 'deaktiviert'}, Sir."
+
+            elif tool_name == "check_tournament":
+                action = "turnier"
+                resp = await fortnite.tournament_status()
 
             else:
                 action = "chat"
