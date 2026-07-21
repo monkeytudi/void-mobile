@@ -40,10 +40,10 @@ EL_VOICES = ([EL_VOICE_ID] if EL_VOICE_ID else []) + _EL_FALLBACKS
 # springt ein wenn Cartesia (nur Preview) und ElevenLabs (Free-Tier gerne mal gesperrt) beide
 # ausfallen. Modell wird beim ersten Start einmalig heruntergeladen (nicht ins Repo committet).
 PIPER_DIR = Path(__file__).parent / "piper_voice"
-PIPER_MODEL_PATH = PIPER_DIR / "de_DE-thorsten-low.onnx"
-PIPER_CONFIG_PATH = PIPER_DIR / "de_DE-thorsten-low.onnx.json"
-PIPER_MODEL_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/low/de_DE-thorsten-low.onnx"
-PIPER_CONFIG_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/low/de_DE-thorsten-low.onnx.json"
+PIPER_MODEL_PATH = PIPER_DIR / "de_DE-thorsten-medium.onnx"
+PIPER_CONFIG_PATH = PIPER_DIR / "de_DE-thorsten-medium.onnx.json"
+PIPER_MODEL_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx"
+PIPER_CONFIG_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx.json"
 _piper_voice = None
 
 
@@ -76,6 +76,13 @@ def _ensure_piper_model():
             PIPER_CONFIG_PATH.write_bytes(c.get(PIPER_CONFIG_URL, follow_redirects=True).content)
 
 
+def _piperize(text: str) -> str:
+    """Piper ist ein rein deutsches Modell und liest 'Sir' sonst komplett eingedeutscht -
+    phonetische Ersatzschreibung nur fuer die Piper-Synthese, der eigentliche Text/Response
+    bleibt unveraendert."""
+    return re.sub(r'\bSir\b', 'Sör', text)
+
+
 def _synthesize_piper_sync(text: str) -> bytes:
     """Blockierend (onnxruntime-Inferenz) - immer ueber asyncio.to_thread aufrufen, sonst
     haengt der Event-Loop fuer die Dauer der Synthese (~1-2s)."""
@@ -87,7 +94,7 @@ def _synthesize_piper_sync(text: str) -> bytes:
             _piper_voice = PiperVoice.load(str(PIPER_MODEL_PATH), str(PIPER_CONFIG_PATH))
         buf = io.BytesIO()
         with wave.open(buf, "wb") as wf:
-            _piper_voice.synthesize_wav(text, wf)
+            _piper_voice.synthesize_wav(_piperize(text), wf)
         return buf.getvalue()
     except Exception as e:
         print(f"[TTS] Piper Exception: {e!r}")
