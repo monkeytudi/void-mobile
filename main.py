@@ -9,6 +9,9 @@ import re
 import base64
 import random
 import time
+import io
+import wave
+import asyncio
 from datetime import datetime
 from pathlib import Path
 
@@ -33,6 +36,16 @@ BLOCKED = {"110", "112", "911", "118", "999", "0110", "0112", "0911"}
 _EL_FALLBACKS = ["onwK4e9ZLuTAKqWW03F9", "pNInz6obpgDQGcFmaJgB", "N2lVS1w4EtoT3dr4eOWO"]
 EL_VOICES = ([EL_VOICE_ID] if EL_VOICE_ID else []) + _EL_FALLBACKS
 
+# Piper: lokale, kostenlose TTS-Notbremse ohne Account/Kontingent/Netzwerkabhaengigkeit -
+# springt ein wenn Cartesia (nur Preview) und ElevenLabs (Free-Tier gerne mal gesperrt) beide
+# ausfallen. Modell wird beim ersten Start einmalig heruntergeladen (nicht ins Repo committet).
+PIPER_DIR = Path(__file__).parent / "piper_voice"
+PIPER_MODEL_PATH = PIPER_DIR / "de_DE-thorsten-low.onnx"
+PIPER_CONFIG_PATH = PIPER_DIR / "de_DE-thorsten-low.onnx.json"
+PIPER_MODEL_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/low/de_DE-thorsten-low.onnx"
+PIPER_CONFIG_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/low/de_DE-thorsten-low.onnx.json"
+_piper_voice = None
+
 
 # ── STT ──────────────────────────────────────────────────────────────────────
 
@@ -50,6 +63,36 @@ async def transcribe(audio: bytes, name: str = "audio.webm") -> str:
 
 
 # ── TTS ──────────────────────────────────────────────────────────────────────
+
+def _ensure_piper_model():
+    """Laedt das Piper-Sprachmodell einmalig herunter, falls noch nicht vorhanden (blockierend,
+    aber nur beim allerersten Piper-Einsatz pro Container-Start noetig)."""
+    PIPER_DIR.mkdir(exist_ok=True)
+    if not PIPER_MODEL_PATH.exists():
+        with httpx.Client(timeout=60.0) as c:
+            PIPER_MODEL_PATH.write_bytes(c.get(PIPER_MODEL_URL, follow_redirects=True).content)
+    if not PIPER_CONFIG_PATH.exists():
+        with httpx.Client(timeout=30.0) as c:
+            PIPER_CONFIG_PATH.write_bytes(c.get(PIPER_CONFIG_URL, follow_redirects=True).content)
+
+
+def _synthesize_piper_sync(text: str) -> bytes:
+    """Blockierend (onnxruntime-Inferenz) - immer ueber asyncio.to_thread aufrufen, sonst
+    haengt der Event-Loop fuer die Dauer der Synthese (~1-2s)."""
+    global _piper_voice
+    try:
+        from piper import PiperVoice
+        _ensure_piper_model()
+        if _piper_voice is None:
+            _piper_voice = PiperVoice.load(str(PIPER_MODEL_PATH), str(PIPER_CONFIG_PATH))
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as wf:
+            _piper_voice.synthesize_wav(text, wf)
+        return buf.getvalue()
+    except Exception as e:
+        print(f"[TTS] Piper Exception: {e!r}")
+        return b""
+
 
 async def synthesize(text: str, preview_mode: bool = False) -> bytes:
     if preview_mode and CARTESIA_KEY and CARTESIA_VOICE:
@@ -90,7 +133,15 @@ async def synthesize(text: str, preview_mode: bool = False) -> bytes:
                 print(f"[TTS] ElevenLabs {vid} Exception: {e!r}")
                 break
 
-    return b""  # Browser TTS fallback
+    # Lokale Piper-Stimme als letzte, garantiert verfuegbare Stufe (kein Account, kein
+    # Kontingent, kein Netzwerk noetig) - besser als stumm zu bleiben, wenn beide Cloud-
+    # Anbieter ausfallen. Android-App faengt leeres Audio zwar selbst per Geraete-TTS ab,
+    # der Discord-Bot hat dieses Fallback nicht, deshalb hier zuverlaessig etwas liefern.
+    audio = await asyncio.to_thread(_synthesize_piper_sync, text)
+    if audio:
+        return audio
+
+    return b""  # Browser/Android-TTS-Fallback beim Client
 
 
 # ── Wake word + LLM intent routing ────────────────────────────────────────────

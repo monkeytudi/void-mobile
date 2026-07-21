@@ -1,6 +1,7 @@
 config.json
 notes.txt
 notes.json
+piper_voice/
 __pycache__/
 *.pyc
 *.log
