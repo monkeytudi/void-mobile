@@ -32,15 +32,22 @@ _cache: dict = {"ts": 0.0, "data": None, "url": None}
 
 
 def _fetch_sync(url: str) -> dict | None:
-    r = cf_requests.get(url, impersonate="chrome124", timeout=20)
+    try:
+        r = cf_requests.get(url, impersonate="chrome124", timeout=20)
+    except Exception as e:
+        print(f"[Fortnite] Request-Exception: {e!r}")
+        return None
     if r.status_code != 200:
+        print(f"[Fortnite] {url} -> {r.status_code}: {r.text[:200]!r}")
         return None
     m = re.search(r"var imp_leaderboard = (\{.*?\});", r.text, re.DOTALL)
     if not m:
+        print(f"[Fortnite] imp_leaderboard-Variable nicht gefunden (len={len(r.text)})")
         return None
     try:
         return json.loads(m.group(1))
-    except Exception:
+    except Exception as e:
+        print(f"[Fortnite] JSON-Parse-Fehler: {e!r}")
         return None
 
 
