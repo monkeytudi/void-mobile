@@ -6,3 +6,5 @@ python-multipart>=0.0.9
 piper-tts>=1.5.0
 # Browser-TLS-Fingerprint fuer Fortnite-Tracker-Abfrage (Cloudflare blockt plaine HTTP-Requests)
 curl_cffi>=0.7.0
+# zoneinfo (Europe/Vienna) braucht auf schlanken Docker-Images die IANA-Zeitzonendaten explizit
+tzdata>=2026.1

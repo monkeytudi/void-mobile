@@ -14,6 +14,14 @@ import wave
 import asyncio
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+# Railway-Container laufen in UTC - ohne explizite Zeitzone waere jede genannte/gespeicherte
+# Uhrzeit 2h (Sommerzeit) bzw. 1h (Winterzeit) falsch gegenueber Oesterreich/Deutschland.
+TZ = ZoneInfo("Europe/Vienna")
+
+def local_now() -> datetime:
+    return datetime.now(TZ)
 
 import fortnite
 
@@ -301,7 +309,7 @@ def save_note(text: str, tags: list[str] | None = None, raw: str = ""):
     notes = load_notes()
     notes.append({
         "id": (notes[-1]["id"] + 1) if notes else 1,
-        "ts": datetime.now().strftime("%d.%m.%Y %H:%M"),
+        "ts": local_now().strftime("%d.%m.%Y %H:%M"),
         "text": text,
         "tags": tags or [],
         "raw": raw or text,
@@ -323,7 +331,7 @@ def _migrate_legacy_notes():
     notes = []
     for i, line in enumerate(legacy.read_text(encoding="utf-8").splitlines(), start=1):
         m = re.match(r'^\[(.*?)\]\s*(.*)$', line)
-        ts, text = (m.group(1), m.group(2)) if m else (datetime.now().strftime("%d.%m.%Y %H:%M"), line)
+        ts, text = (m.group(1), m.group(2)) if m else (local_now().strftime("%d.%m.%Y %H:%M"), line)
         if text.strip():
             notes.append({"id": i, "ts": ts, "text": text.strip(), "tags": [], "raw": line})
     if notes:
@@ -358,7 +366,7 @@ async def process(text: str, sid: str, conv_mode: bool, preview: bool):
 
             elif tool_name == "get_time":
                 action = "uhrzeit"
-                now = datetime.now()
+                now = local_now()
                 resp = (f"Es ist {now.hour} Uhr {now.minute:02d}, Sir."
                         if now.minute else f"Es ist {now.hour} Uhr, Sir.")
 
