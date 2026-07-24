@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -29,6 +29,7 @@ CARTESIA_KEY    = os.getenv("CARTESIA_API_KEY",     config.get("cartesia_api_key
 CARTESIA_VOICE  = os.getenv("CARTESIA_VOICE_ID",   config.get("cartesia_voice_id", ""))
 EL_KEY          = os.getenv("ELEVENLABS_API_KEY",   config.get("elevenlabs_api_key", ""))
 EL_VOICE_ID     = os.getenv("ELEVENLABS_VOICE_ID",  config.get("elevenlabs_voice_id", ""))
+FORTNITE_PUSH_SECRET = os.getenv("FORTNITE_PUSH_SECRET", "")
 
 NOTES_FILE = Path(__file__).parent / "notes.json"
 sessions: dict[str, list] = {}
@@ -483,6 +484,19 @@ async def api_text(req: TextReq):
 async def api_notes():
     lines = [f"[{n['ts']}] {n['text']}" for n in load_notes()]
     return {"notes": list(reversed(lines[-100:]))}
+
+
+class FortnitePush(BaseModel):
+    data: dict
+
+@app.post("/api/fortnite/push")
+async def fortnite_push(req: FortnitePush, x_push_secret: str = Header(default="")):
+    # Railways eigene Server-IP wird von Cloudflare geblockt (403) - dieser Endpoint nimmt stattdessen
+    # ein von aussen (funktionierender Standort) bereits geholtes Leaderboard-JSON entgegen.
+    if FORTNITE_PUSH_SECRET and x_push_secret != FORTNITE_PUSH_SECRET:
+        raise HTTPException(status_code=403, detail="Falsches Secret")
+    fortnite.store_pushed(req.data)
+    return {"ok": True}
 
 
 @app.delete("/api/notes")

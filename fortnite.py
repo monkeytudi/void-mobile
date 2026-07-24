@@ -2,10 +2,14 @@
 getrackten Teams zusammen.
 
 Die Event-Seite (fortnitetracker.com) sitzt hinter Cloudflare-Bot-Schutz - ein einfacher HTTP-Request
-bekommt nur die "Just a moment..."-Challenge-Seite (403). Mit einem Browser-TLS-Fingerprint (curl_cffi,
-impersoniert echtes Chrome) kommt man durch, auch von einer Rechenzentrums-IP aus (wie Railway) getestet.
-Die komplette Leaderboard-Tabelle liegt zudem schon als JSON-Variable (`var imp_leaderboard = ...`) im
-HTML - kein HTML-Tabellen-Parsing noetig, nur die Variable extrahieren.
+bekommt nur die "Just a moment..."-Challenge-Seite (403). Ein Browser-TLS-Fingerprint (curl_cffi,
+impersoniert echtes Chrome) kommt zwar an manchen Standorten durch, wird aber von Railways konkreter
+Server-IP trotzdem geblockt (IP-Reputation, nicht Bot-Erkennung im engeren Sinn) - Cloudflare blockt
+zudem explizit auch Cloudflare-Worker-zu-Worker-Fetches (Error 1042), das scheidet also auch aus.
+Deshalb zusaetzlich ein Push-Weg: ein Fetch von einem funktionierenden Standort aus kann das Ergebnis
+per POST /api/fortnite/push direkt in den Cache hier schieben, unabhaengig vom eigenen Live-Fetch-Versuch.
+Die komplette Leaderboard-Tabelle liegt als JSON-Variable (`var imp_leaderboard = ...`) im HTML - kein
+HTML-Tabellen-Parsing noetig, nur die Variable extrahieren.
 """
 import asyncio
 import json
@@ -29,6 +33,12 @@ TRACKED_TEAMS = [
 
 _CACHE_TTL_S = 300  # Quelle aktualisiert laut internal_Cache_Mins ohnehin nur stuendlich
 _cache: dict = {"ts": 0.0, "data": None, "url": None}
+_pushed: dict = {"ts": 0.0, "data": None}
+
+
+def store_pushed(data: dict):
+    _pushed["ts"] = time.time()
+    _pushed["data"] = data
 
 
 def _fetch_sync(url: str) -> dict | None:
@@ -51,15 +61,24 @@ def _fetch_sync(url: str) -> dict | None:
         return None
 
 
-async def _get_leaderboard() -> dict | None:
+async def _get_leaderboard() -> tuple[dict | None, float]:
     now = time.time()
     if _cache["data"] is not None and _cache["url"] == EVENT_URL and now - _cache["ts"] < _CACHE_TTL_S:
-        return _cache["data"]
+        return _cache["data"], _cache["ts"]
+
     data = await asyncio.to_thread(_fetch_sync, EVENT_URL)
     if data is not None:
         _cache.update(ts=now, data=data, url=EVENT_URL)
-        return data
-    return _cache["data"]  # Fehlschlag -> letzten bekannten Stand weiterverwenden, falls vorhanden
+        return data, now
+
+    # Eigener Live-Fetch fehlgeschlagen (Cloudflare) -> neuestes verfuegbares Ergebnis nehmen,
+    # egal ob aus altem eigenen Cache oder von aussen gepusht.
+    candidates = [(_cache["ts"], _cache["data"]), (_pushed["ts"], _pushed["data"])]
+    candidates = [(ts, d) for ts, d in candidates if d is not None]
+    if not candidates:
+        return None, 0.0
+    ts, d = max(candidates, key=lambda c: c[0])
+    return d, ts
 
 
 def _find_account_id(accounts: dict, fragment: str) -> str | None:
@@ -93,7 +112,7 @@ def _summarize(entry: dict, label: str) -> str:
 
 
 async def tournament_status() -> str:
-    data = await _get_leaderboard()
+    data, ts = await _get_leaderboard()
     if data is None:
         return "Ich komme gerade nicht ans Turnier-Leaderboard ran, Sir."
 
@@ -112,4 +131,6 @@ async def tournament_status() -> str:
         lines.append(_summarize(entry, team["label"]) if entry
                      else f"{team['label']} sind aktuell nicht auf dem Leaderboard")
 
-    return ". ".join(lines) + ", Sir."
+    age_min = int((time.time() - ts) / 60) if ts else None
+    stale_hint = f" (Stand vor {age_min} Minuten)" if age_min and age_min >= 10 else ""
+    return ". ".join(lines) + f"{stale_hint}, Sir."
