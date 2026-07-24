@@ -55,10 +55,12 @@ def _fetch_sync(url: str) -> dict | None:
         print(f"[Fortnite] imp_leaderboard-Variable nicht gefunden (len={len(r.text)})")
         return None
     try:
-        return json.loads(m.group(1))
+        parsed = json.loads(m.group(1))
     except Exception as e:
         print(f"[Fortnite] JSON-Parse-Fehler: {e!r}")
         return None
+    print(f"[Fortnite] Live-Fetch erfolgreich, {len(parsed.get('entries') or [])} Eintraege")
+    return parsed
 
 
 async def _get_leaderboard() -> tuple[dict | None, float]:
